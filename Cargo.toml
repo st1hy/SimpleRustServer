@@ -1,0 +1,6 @@
+[package]
+name = "simple_rust_server"
+version = "0.1.0"
+authors = ["st1hy <st1hy@outlook.com>"]
+
+[dependencies]
