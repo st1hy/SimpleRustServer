@@ -53,7 +53,9 @@ function timeConverter(UNIX_timestamp) {
 }
 
 function onReset() {
-    postAsync("/echo", {operation: "reset"}, function(msg) {
+    var data = {operation: "reset"};
+    var json = JSON.stringify(data);
+    postAsync("/echo", json, function(msg) {
 
         console.log("onReset returned");
     });
