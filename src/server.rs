@@ -9,13 +9,15 @@ use futures::future;
 use hyper::header::ContentLength;
 use hyper::server::{Request, Response};
 
+pub type BoxFuture = Box<Future<Item = Response, Error = hyper::Error>>;
+
 pub trait EchoHandler {
-    fn handle_post(&self, req: Request) -> Box<Future<Item = Response, Error = hyper::Error>>;
+    fn handle_post(&self, req: Request) -> BoxFuture;
 }
 
 impl EchoHandler for Server {
 
-    fn handle_post(&self, req: Request) -> Box<Future<Item = Response, Error = hyper::Error>> {
+    fn handle_post(&self, req: Request) -> BoxFuture {
         let res = Response::new();
         let (_method, _uri, _version, headers, body) = req.deconstruct();
         let input: Vec<u8> = if let Some(len) = headers.get::<ContentLength>() {

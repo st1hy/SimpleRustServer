@@ -16,20 +16,19 @@ mod json;
 mod volatiledata;
 mod server;
 
-use futures::future::Future;
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{Method, StatusCode};
 use fileserver::Fileserver;
 use std::rc::Rc;
 use internaldata::{Server, InternalData};
 use volatiledata::VolatileData;
-use server::EchoHandler;
+use server::{EchoHandler, BoxFuture};
 
 impl Service for Server {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = Box<Future<Item=Self::Response, Error=Self::Error>>;
+    type Future = BoxFuture;
 
     fn call(&self, req: Request) -> Self::Future {
         let mut response = Response::new();
@@ -61,7 +60,7 @@ impl Service for Server {
     }
 }
 
-fn response_ok(response: Response) -> Box<Future<Item=Response, Error=hyper::Error>> {
+fn response_ok(response: Response) -> BoxFuture {
     Box::new(futures::future::ok(response))
 }
 

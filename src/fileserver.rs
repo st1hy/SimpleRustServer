@@ -15,14 +15,15 @@ use std::fs::File;
 use std::io::{self, copy, Read};
 use std::thread;
 use internaldata::Server;
+use server::BoxFuture;
 
 static MSG_FILE_NOT_FOUND: &'static str = "File not Found";
 
 pub trait Fileserver {
-    fn simple_file_send(&self, f: &str) -> Box<Future<Item = Response, Error = hyper::Error>>;
-    fn stream_file(&self, f: &str) -> Box<Future<Item=Response, Error=hyper::Error>>;
-    fn cached_file_send(&self, f: &str) -> Box<Future<Item = Response, Error = hyper::Error>>;
-    fn maybe_cached_file_send(&self, f: &str) -> Box<Future<Item = Response, Error = hyper::Error>>;
+    fn simple_file_send(&self, f: &str) -> BoxFuture;
+    fn stream_file(&self, f: &str) -> BoxFuture;
+    fn cached_file_send(&self, f: &str) -> BoxFuture;
+    fn maybe_cached_file_send(&self, f: &str) -> BoxFuture;
     fn get_file_path(&self, f: &str) -> String;
 }
 
@@ -42,7 +43,7 @@ impl Fileserver for Server {
     //
     // On channel errors, we panic with the expect method. The thread
     // ends at that point in any case.
-    fn simple_file_send(&self, f: &str) -> Box<Future<Item = Response, Error = hyper::Error>> {
+    fn simple_file_send(&self, f: &str) -> BoxFuture {
 
         let filename = self.get_file_path(f);
         let (tx, rx) = oneshot::channel();
@@ -76,7 +77,7 @@ impl Fileserver for Server {
         Box::new(rx.map_err(|e| Error::from(io::Error::new(io::ErrorKind::Other, e))))
     }
 
-    fn stream_file(&self, f: &str) -> Box<Future<Item=Response, Error=hyper::Error>> {
+    fn stream_file(&self, f: &str) -> BoxFuture {
         let filename = self.get_file_path(f);
         let (tx, rx) = oneshot::channel();
         thread::spawn(move || {
@@ -119,7 +120,7 @@ impl Fileserver for Server {
     }
 
 
-    fn cached_file_send(&self, f: &str) -> Box<Future<Item = Response, Error = hyper::Error>> {
+    fn cached_file_send(&self, f: &str) -> BoxFuture {
 
         let filename = self.get_file_path(f);
         let file_cache = self.file_cache.cache.clone();
@@ -190,7 +191,7 @@ impl Fileserver for Server {
     }
 
 
-    fn maybe_cached_file_send(&self, f: &str) -> Box<Future<Item = Response, Error = hyper::Error>> {
+    fn maybe_cached_file_send(&self, f: &str) -> BoxFuture {
         if self.internals.use_cache {
             self.cached_file_send(f)
         } else {
