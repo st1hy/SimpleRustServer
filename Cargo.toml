@@ -4,3 +4,11 @@ version = "0.1.0"
 authors = ["st1hy <st1hy@outlook.com>"]
 
 [dependencies]
+futures = "*"
+hyper = "*"
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
+log = "*"
+env_logger = "0.5.0-rc.2"
+time = "*"
