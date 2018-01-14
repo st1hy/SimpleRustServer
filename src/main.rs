@@ -3,22 +3,27 @@ extern crate futures;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
+extern crate serde_json;
+#[macro_use]
 extern crate log;
 extern crate env_logger;
 extern crate time;
 
 mod fileserver;
 mod internaldata;
+mod filecache;
+mod json;
+mod volatiledata;
+mod server;
 
 use futures::future::Future;
-use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{Method, StatusCode};
 use fileserver::Fileserver;
 use std::rc::Rc;
-
-type Server = internaldata::Server;
-type InternalData = internaldata::InternalData;
+use internaldata::{Server, InternalData};
+use volatiledata::VolatileData;
+use server::EchoHandler;
 
 impl Service for Server {
     type Request = Request;
@@ -28,19 +33,14 @@ impl Service for Server {
 
     fn call(&self, req: Request) -> Self::Future {
         let mut response = Response::new();
-        debug!("New request {:?}", req);
-        info!("New request {}", req.path());
-
         match (req.method(), req.path()) {
             (&Method::Get, "/echo") => {
                 response.set_body("Try POSTing data to /echo");
                 response_ok(response)
             }
             (&Method::Post, "/echo") => {
-                response
-                    //.with_header(ContentLength(body.len() as u64))
-                    .set_body(req.body());
-                response_ok(response)
+                info!("incoming post");
+                self.handle_post(req)
             }
             (&Method::Get, "/timestamp/PHONE")  => {
                 let timestamp = time::now_utc().to_timespec().sec;
@@ -48,10 +48,10 @@ impl Service for Server {
                 response_ok(response)
             }
             (&Method::Get, "/")  => {
-                self.simple_file_send("/index.html")
+                self.maybe_cached_file_send("/index.html")
             }
             (&Method::Get, _) => {
-                self.simple_file_send(req.path())
+                self.maybe_cached_file_send(req.path())
             }
             _ => {
                 response.set_status(StatusCode::NotFound);
@@ -65,12 +65,10 @@ fn response_ok(response: Response) -> Box<Future<Item=Response, Error=hyper::Err
     Box::new(futures::future::ok(response))
 }
 
-
 fn main() {
     env_logger::init();
-
-    let address = "127.0.0.1:8080";
-    let internaldata = InternalData::new(address, "www");
+    let internaldata = InternalData::from_file(internaldata::DEFAULT_CONFIGURATION_FILE);
+    let address = internaldata.server_address.clone();
     info!("Started server listening at {}", &address);
     let addr = address.parse().unwrap();
     let rc_data = Rc::new(internaldata);
@@ -78,7 +76,8 @@ fn main() {
     let server = Http::new().bind(&addr, move || {
         let data_rc = rc_data.clone();
         let data = data_rc.as_ref().to_owned();
-        let server = Server::new(data);
+        let volatile_data = VolatileData::from_file(&data.volatile_file);
+        let server = Server::new(data, volatile_data);
         Ok(server)
     }).unwrap();
     server.run().unwrap();

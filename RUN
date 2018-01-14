@@ -3,4 +3,4 @@
 # Don't print style characters
 # RUST_LOG_STYLE=never
 #
-RUST_LOG=info target/debug/simple_rust_server 
+RUST_LOG=error,simple_rust_server=debug target/debug/simple_rust_server 

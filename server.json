@@ -1,0 +1,6 @@
+{
+  "server_address": "127.0.0.1:8080",
+  "files_dir": "www",
+  "volatile_file": "data.json",
+  "use_cache": false
+}

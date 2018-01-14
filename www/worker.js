@@ -1,23 +1,26 @@
 var loop = false;
+var update_rate = 60000;
 
 self.onmessage = function(msg) {
-    console.log("Worker: " + msg.data);
-    if (msg.data.operation == "loop") {
-        update_time();
-        loop = true;
-        setTimeout(update_time, 1000);
+    switch (msg.data.operation) {
+        case "loop":
+            update_time();
+            loop = true;
+            setTimeout(update_time, update_rate);
+            break;
+        case "reset":
+            onReset();
+            break;
     }
 }
 
 function update_time() {
-    console.log('update time running');
     get_last_date('last_drop_time');
-    if (loop) setTimeout(update_time, 1000);
+    if (loop) setTimeout(update_time, update_rate);
 }
 
 function get_last_date(target) {
     httpGetAsync(location.origin + '/timestamp/PHONE', function (responseText) {
-        console.log(responseText);
         var date = timeConverter(responseText)
         self.postMessage({
                 operation: 'update',
@@ -27,21 +30,19 @@ function get_last_date(target) {
     })
 }
 
-function httpGetAsync(theUrl, callback)
-{
+function httpGetAsync(theUrl, callback) {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         var DONE = 4; // readyState 4 means the request is done.
         var OK = 200; // status 200 is a successful return.
         if (xhr.readyState == DONE) {
-            if (xhr.status == 200) {
+            if (xhr.status == OK) {
                 callback(xhr.responseText);
             } else {
-                console.log('Http async get error: ' + xhr.status);
+                console.log('Http async GET error: ' + xhr.status);
             }
         }
     }
-    console.log(xhr);
     xhr.open("GET", theUrl, true); // true for asynchronous
     xhr.send(null);
 }
@@ -49,4 +50,34 @@ function httpGetAsync(theUrl, callback)
 function timeConverter(UNIX_timestamp) {
   var date = new Date(UNIX_timestamp * 1000);
   return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+}
+
+function onReset() {
+    postAsync("/echo", {operation: "reset"}, function(msg) {
+
+        console.log("onReset returned");
+    });
+}
+
+function postAsync(url, data, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    console.log("onReset");
+
+    //Send the proper header information along with the request
+    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+    xhr.onreadystatechange = function() {
+        var DONE = 4; // readyState 4 means the request is done.
+        var OK = 200; // status 200 is a successful return.
+        if (xhr.readyState == DONE) {
+            if (xhr.status == OK) {
+                console.log(xhr.responseText);
+                callback(xhr.responseText);
+            } else {
+                console.log('Http async POST error: ' + xhr.status);
+            }
+        }
+    }
+    xhr.send(data);
 }
